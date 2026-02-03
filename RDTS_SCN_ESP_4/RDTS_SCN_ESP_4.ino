@@ -69,7 +69,7 @@ static inline void led_off(uint8_t pin) {
 
 // Scan scheduling state
 static bool scan_active_prev = false;
-static bool scan_had_packet = false;
+static bool scan_had_sync = false;  // true iff at least one beacon was ACCEPTED during this scan window
 
 // After first accepted beacon, we schedule scans in *disciplined unix ms*,
 // centered on N*SCAN_PERIOD_MS.
@@ -81,7 +81,7 @@ static bool rdts_time_valid = false;
 static uint64_t rdts_last_unix_ms = 0;
 
 // Scan / policy parameters
-#define SCAN_PERIOD_MS 10000 //60000
+#define SCAN_PERIOD_MS 10000  //60000
 #define SCAN_DURATION_MS 100
 #define SCAN_WINDOW_OFFSET_MS 100
 
@@ -235,7 +235,7 @@ void loop() {
   if (act.kind == SCAN_ACTION_START) {
     bool ok = ble_scan_start(act.duration_ms);
     if (ok) {
-      scan_had_packet = false;
+      scan_had_sync = false;
       scan_sched_on_scan_started(now);
 
       Serial.print("\n[RDTS] Scanning...\n");
@@ -259,7 +259,6 @@ void loop() {
   rdts_packet_t pkt;
 
   if (rdts_get_latest_raw(&raw)) {
-    scan_had_packet = true;
 
     rdts_decode_result_t res =
       rdts_decode_packet(raw.data, raw.len, &pkt);
@@ -323,6 +322,7 @@ void loop() {
       // ---------------- Accepted beacon ----------------
 
       // Stop scan immediately after first accepted beacon (power saving)
+      scan_had_sync = true;
       ble_scan_stop();
 
       const TimeBeaconReport &tr = rx.time_report;
@@ -407,10 +407,9 @@ void loop() {
   // -------------------------------------------------------------------------
   bool scan_active_now = ble_scan_active();
   if (scan_active_prev && !scan_active_now) {
-    scan_sched_on_scan_finished(scan_had_packet);
-
-    if (!scan_had_packet) {
-      Serial.println("[RDTS] no packet received this scan");
+    scan_sched_on_scan_finished(scan_had_sync);
+    if (!scan_had_sync) {
+      Serial.println("[RDTS] no ACCEPTED beacon this scan");
     }
   }
   scan_active_prev = scan_active_now;
