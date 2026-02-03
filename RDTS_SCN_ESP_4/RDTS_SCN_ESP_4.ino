@@ -76,7 +76,6 @@ static bool scan_had_packet = false;
 static bool sched_locked = false;
 static uint64_t next_scan_start_unix = 0;  // disciplined unix ms
 
-
 // RDTS time sanity tracking (application-level policy)
 static bool rdts_time_valid = false;
 static uint64_t rdts_last_unix_ms = 0;
