@@ -30,6 +30,11 @@ struct RDTSRxResult {
 // Initialize internal policy state
 void rdts_receiver_init(void);
 
+// Begin reacquire after prolonged beacon loss.
+// Next decoded beacon will be accepted and used to re-anchor disciplined time.
+// If preserve_freq is true, TimeDisciplined keeps its learned g_freq_ppm.
+void rdts_receiver_begin_reacquire(bool preserve_freq);
+
 // Process one decoded RDTS packet
 RDTSRxResult rdts_receiver_on_packet(const rdts_packet_t &pkt, uint32_t rtc_rx_ms);
 

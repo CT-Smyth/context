@@ -71,6 +71,9 @@ static inline void led_off(uint8_t pin) {
 static bool scan_active_prev = false;
 static bool scan_had_sync = false;  // true iff at least one beacon was ACCEPTED during this scan window
 
+static uint32_t scan_miss_count = 0;
+
+
 // After first accepted beacon, we schedule scans in *disciplined unix ms*,
 // centered on N*SCAN_PERIOD_MS.
 static bool sched_locked = false;
@@ -81,9 +84,10 @@ static bool rdts_time_valid = false;
 static uint64_t rdts_last_unix_ms = 0;
 
 // Scan / policy parameters
-#define SCAN_PERIOD_MS 10000  //60000
+#define SCAN_PERIOD_MS 60000
 #define SCAN_DURATION_MS 100
 #define SCAN_WINDOW_OFFSET_MS 100
+#define SCAN_MISS_THRESHOLD 10
 
 #define RDTS_MAX_TIME_JUMP_MS (SCAN_PERIOD_MS + 5000ULL)
 // This is independent of scan interval or missed beacons.
@@ -321,9 +325,10 @@ void loop() {
 
       // ---------------- Accepted beacon ----------------
 
-      // Stop scan immediately after first accepted beacon (power saving)
-      scan_had_sync = true;
-      ble_scan_stop();
+// Stop scan immediately after first accepted beacon (power saving)
+scan_had_sync = true;
+scan_miss_count = 0;   // reset consecutive-miss counter on success
+ble_scan_stop();
 
       const TimeBeaconReport &tr = rx.time_report;
       scan_sched_on_beacon_accepted(tr.beacon_unix_ms);
@@ -405,14 +410,32 @@ void loop() {
   // -------------------------------------------------------------------------
   // Scan end handling
   // -------------------------------------------------------------------------
-  bool scan_active_now = ble_scan_active();
-  if (scan_active_prev && !scan_active_now) {
-    scan_sched_on_scan_finished(scan_had_sync);
-    if (!scan_had_sync) {
-      Serial.println("[RDTS] no ACCEPTED beacon this scan");
+// -------------------------------------------------------------------------
+// Scan end handling
+// -------------------------------------------------------------------------
+bool scan_active_now = ble_scan_active();
+if (scan_active_prev && !scan_active_now) {
+  scan_sched_on_scan_finished(scan_had_sync);
+
+  if (!scan_had_sync) {
+    Serial.println("[RDTS] no ACCEPTED beacon this scan");
+    scan_miss_count++;
+
+    if (scan_miss_count >= SCAN_MISS_THRESHOLD) {
+      Serial.println("[RDTS] miss threshold reached -> forcing prelock + reacquire");
+
+      scan_miss_count = 0;
+
+      // Force aggressive prelock scanning (as-if reset)
+      scan_sched_force_prelock();
+
+      // Arm one-shot accept + re-anchor on next decoded beacon
+      // Preserve learned frequency / holdover quality
+      rdts_receiver_begin_reacquire(true);
     }
   }
-  scan_active_prev = scan_active_now;
+}
+scan_active_prev = scan_active_now;
 
   // -------------------------------------------------------------------------
   // LED auto-off timing

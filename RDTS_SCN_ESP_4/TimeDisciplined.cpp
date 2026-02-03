@@ -242,3 +242,54 @@ TimeBeaconReport time_on_beacon(uint64_t beacon_unix_ms, uint32_t rtc_rx_ms) {
 
   return r;
 }
+
+TimeBeaconReport time_reanchor(uint64_t beacon_unix_ms, uint32_t rtc_rx_ms, bool preserve_freq)
+{
+  TimeBeaconReport r = {};
+  r.rtc_rx_ms = rtc_rx_ms;
+  r.beacon_unix_ms = beacon_unix_ms;
+  r.initialized = g_init;
+
+  // Pre-change diagnostics
+  int64_t raw_unix_pre = (int64_t)rtc_rx_ms + g_raw_offset_ms;
+  int64_t local_pre = g_init ? predict_local_ms(rtc_rx_ms) : (int64_t)beacon_unix_ms;
+
+  r.raw_unix_ms = raw_unix_pre;
+  r.local_unix_ms_pre = local_pre;
+  r.delta_rtc_vs_beacon_ms  = (int64_t)beacon_unix_ms - raw_unix_pre;
+  r.delta_real_vs_beacon_ms = (int64_t)beacon_unix_ms - local_pre;
+
+  // Preserve learned oscillator rate if requested
+  double saved_freq_ppm = g_freq_ppm;
+
+  // Hard re-anchor mapping to this beacon (single-shot).
+  g_raw_offset_ms = (int64_t)beacon_unix_ms - (int64_t)rtc_rx_ms;
+
+  g_epoch_rtc_ms  = rtc_rx_ms;
+  g_epoch_unix_ms = (int64_t)beacon_unix_ms;
+
+  g_phase_ms = 0.0;
+
+  if (preserve_freq) {
+    g_freq_ppm = saved_freq_ppm;
+  } else {
+    g_freq_ppm = 0.0;
+  }
+
+  // Reset Δt baseline so the next frequency update has a sane dt window.
+  g_have_prev = true;
+  g_prev_rtc_ms = rtc_rx_ms;
+
+  // Reset monotonic latch to this point (so time_now_unix_ms won't clamp upward forever)
+  g_have_local = true;
+  g_last_local_ms = (int64_t)beacon_unix_ms;
+
+  g_init = true;
+
+  // Post-change values (by definition, anchored to beacon)
+  r.local_unix_ms_post = (int64_t)beacon_unix_ms;
+  r.A_ppm = g_freq_ppm;
+  r.B_ms  = g_epoch_unix_ms - (int64_t)g_epoch_rtc_ms;
+  r.initialized = true;
+  return r;
+}

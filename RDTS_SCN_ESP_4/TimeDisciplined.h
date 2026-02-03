@@ -40,3 +40,7 @@ uint64_t time_predict_unix_ms(uint32_t rtc_now_ms);
 uint64_t time_now_unix_ms(uint32_t rtc_now_ms);
 
 TimeBeaconReport time_on_beacon(uint64_t beacon_unix_ms, uint32_t rtc_rx_ms);
+
+// One-shot re-anchor used for reacquire after prolonged miss.
+// Preserves g_freq_ppm when preserve_freq == true.
+TimeBeaconReport time_reanchor(uint64_t beacon_unix_ms, uint32_t rtc_rx_ms, bool preserve_freq);

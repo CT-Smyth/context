@@ -62,6 +62,8 @@ ScanAction scan_sched_poll(
 // Event hooks
 void scan_sched_on_scan_started(uint32_t rtc_now_ms);
 void scan_sched_on_scan_finished(bool had_packet);
-
 // Accepted beacon (discipline succeeded)
 void scan_sched_on_beacon_accepted(uint64_t beacon_unix_ms);
+
+// Force scheduler back to pre-lock/aggressive mode (as-if reset), preserving config.
+void scan_sched_force_prelock(void);

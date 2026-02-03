@@ -87,6 +87,13 @@ void scan_sched_on_beacon_accepted(uint64_t beacon_unix_ms) {
   }
 }
 
+void scan_sched_force_prelock(void)
+{
+  locked = false;
+  next_scan_unix_ms = 0;
+  // keep phase_offset_ms and cfg as configured
+}
+
 uint32_t scan_sched_consecutive_misses(void) {
   return consecutive_misses;
 }
