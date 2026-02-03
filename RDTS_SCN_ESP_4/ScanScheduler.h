@@ -42,11 +42,6 @@ typedef struct {
   uint32_t duration_ms;
 } ScanAction;
 
-#ifndef SCAN_MISSED_SYNC_THRESHOLD
-#define SCAN_MISSED_SYNC_THRESHOLD 5  //TODO 15 PRODUCTION
-#endif
-
-uint32_t scan_sched_consecutive_misses(void);
 
 
 void scan_sched_init(const ScanSchedConfig *cfg);
@@ -61,7 +56,7 @@ ScanAction scan_sched_poll(
 
 // Event hooks
 void scan_sched_on_scan_started(uint32_t rtc_now_ms);
-void scan_sched_on_scan_finished(bool had_packet);
+void scan_sched_on_scan_finished(bool had_sync);
 // Accepted beacon (discipline succeeded)
 void scan_sched_on_beacon_accepted(uint64_t beacon_unix_ms);
 

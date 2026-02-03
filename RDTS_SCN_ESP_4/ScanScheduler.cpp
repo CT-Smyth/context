@@ -7,7 +7,6 @@ static ScanSchedConfig cfg;
 static bool     locked = false;
 static uint64_t next_scan_unix_ms = 0;
 static int32_t  phase_offset_ms = 0;
-static uint32_t consecutive_misses = 0;
 
 // ------------------------------------------------
 
@@ -15,7 +14,6 @@ void scan_sched_init(const ScanSchedConfig *c) {
   cfg = *c;
   locked = false;
   next_scan_unix_ms = 0;
-  consecutive_misses = 0;
   phase_offset_ms = (int32_t)c->initial_phase_offset_ms;
 }
 
@@ -57,21 +55,8 @@ void scan_sched_on_scan_started(uint32_t rtc_now_ms) {
 }
 
 void scan_sched_on_scan_finished(bool had_sync) {
-  if (had_sync) {
-    consecutive_misses = 0;
-    return;
-  }
-
-  // Miss = no accepted beacon during this scan window (regardless of bad packets)
-  consecutive_misses++;
-
-  if (consecutive_misses >= SCAN_MISSED_SYNC_THRESHOLD) {
-    // Reset scheduling state to "prelock/aggressive" as if from boot.
-    locked = false;
-    next_scan_unix_ms = 0;
-    // keep phase_offset_ms and cfg (so we relock the same way once a beacon is accepted)
-    consecutive_misses = 0;
-  }
+  // Scheduler is policy-free: application decides if/when recovery is needed.
+  (void)had_sync;
 }
 
 void scan_sched_on_beacon_accepted(uint64_t beacon_unix_ms) {
@@ -92,8 +77,4 @@ void scan_sched_force_prelock(void)
   locked = false;
   next_scan_unix_ms = 0;
   // keep phase_offset_ms and cfg as configured
-}
-
-uint32_t scan_sched_consecutive_misses(void) {
-  return consecutive_misses;
 }
