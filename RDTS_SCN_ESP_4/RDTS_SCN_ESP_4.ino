@@ -84,8 +84,8 @@ static bool rdts_time_valid = false;
 static uint64_t rdts_last_unix_ms = 0;
 
 // Scan / policy parameters
-#define SCAN_PERIOD_MS 60000
-#define SCAN_DURATION_MS 100
+#define SCAN_PERIOD_MS 1000
+#define SCAN_DURATION_MS 200
 #define SCAN_WINDOW_OFFSET_MS 100
 #define SCAN_MISS_THRESHOLD 10
 
